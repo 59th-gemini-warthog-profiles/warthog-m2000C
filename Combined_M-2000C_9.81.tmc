@@ -1,0 +1,226 @@
+include "target.tmh" //default Thrustmaster function code 
+
+int Eject ;
+
+int main() 
+{ 
+
+Configure(&LMFD,MODE_EXCLUDED); 
+Configure(&RMFD,MODE_EXCLUDED);
+Configure(&HCougar,MODE_EXCLUDED);
+Configure(&T16000,MODE_EXCLUDED);
+Configure(&T16000L,MODE_EXCLUDED);
+Configure(&TFRPRudder,MODE_EXCLUDED);
+
+if(Init(&EventHandle)) return 1; //event handler, return on error  
+
+//shift button
+SetShiftButton(&Joystick,S4);
+
+//set pulse and delay lengths
+SetKBRate(50,100);
+
+//LED init state
+ActKey(PULSE+KEYON+LED(&Throttle, LED_INTENSITY, 214)); //set Throttle backlight power to 5/6
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED0)); //set backlight OFF
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED1)); //set LED 1 OFF
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED2)); //set LED 2 OFF
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED3)); //set LED 3 OFF
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED4)); //set LED 4 OFF
+ActKey(PULSE+KEYON+LED(&Throttle, LED_ONOFF, LED_CURRENT-LED5)); //set LED 5 OFF
+
+
+/////////////////////////////////////////
+//Joystick and Throttle Axis Definitions/
+/////////////////////////////////////////
+MapAxis(&Joystick, JOYX, DX_X_AXIS); 
+MapAxis(&Joystick, JOYY, DX_Y_AXIS); 
+MapAxis(&Throttle, THR_LEFT, DX_ZROT_AXIS); 
+MapAxis(&Throttle, THR_RIGHT, DX_Z_AXIS); 
+
+//Shift slew to mouse with S4, Shift slider axe to mousewheel with S4
+MapKey(&Joystick, S4, EXEC("MapAxis(&Throttle,SCX,MOUSE_X_AXIS,AXIS_NORMAL,MAP_RELATIVE);"
+"SetSCurve(&Throttle, SCX, 0, 10, 0, 0, -5);"
+"MapAxis(&Throttle, SCY, MOUSE_Y_AXIS, AXIS_NORMAL, MAP_RELATIVE);"
+"SetSCurve(&Throttle, SCY, 0, 10, 0, 0, -5);"
+"MapAxis(&Throttle, THR_FC, DX_THROTTLE_AXIS);"
+));
+
+MapKeyR(&Joystick, S4, EXEC("MapAxis(&Throttle, SCX, DX_XROT_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);"
+"SetSCurve(&Throttle, SCX, 0, 0, 0, 0, 0);"
+"MapAxis(&Throttle, SCY, DX_YROT_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);"
+"SetSCurve(&Throttle, SCY, 0, 0, 0, 0, 0);"
+"MapAxis(&Throttle, THR_FC, DX_SLIDER_AXIS);"
+));
+
+//Slew
+MapAxis(&Throttle, SCX, DX_XROT_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);
+SetSCurve(&Throttle, SCX, 0, 0, 0, 0, 0);
+MapAxis(&Throttle, SCY, DX_YROT_AXIS, AXIS_NORMAL, MAP_ABSOLUTE);
+SetSCurve(&Throttle, SCY, 0, 0, 0, 0, 0);
+   
+//Slew click
+MapKeyIO(&Throttle,SC,MOUSE_LEFT,USB[0x5D]); //mouse click, usb code 'num5' for trackir center
+
+//Assign RADAR ELEVATION to throttle friction lever in DCS
+MapAxis(&Throttle, THR_FC, DX_SLIDER_AXIS);
+
+printf("   \xa");
+printf(" --------[ NOiD M2000-C Profile 9.8 ]-------- \xa");
+printf("   \xa");
+
+//////////////////////////////
+//Joystick Button Definitions/
+//////////////////////////////
+
+MapKeyIO(&Joystick,TG1,USB[0x2A],USB[0x28]); //UNLOCK usb code 'Backspace', LOCK usb code 'Return' 1st trigger
+MapKey(&Joystick,TG2,CHAIN(PULSE+USB[0x06],D(),PULSE+L_CTL+USB[0x23],D(),PULSE+USB[0x2C],D(),USB[0x2C])); //SELECT gun, ARM gun and FIRE usb code 'C' (select gun) '6' (gun ARM)'SPC' 2nd trigger
+MapKeyR(&Joystick,TG2,CHAIN(PULSE+L_CTL+USB[0x23],D(),USB[0x2C])); //SAFE GUN usb code '6' (gun SAFE)
+MapKeyIO(&Joystick,S1,TEMPO(PULSE+R_ALT+USB[0x17],PULSE+L_ALT+USB[0x34],500),SEQ(PULSE+L_CTL+USB[0x1E],PULSE+L_CTL+USB[0x1F])); //NEXT WAYPOINT/AIRFIELD/TARGET usb code 't' -LONG PRESS: usb code ''' refuel reload, CYCLE MAGIC/530 usb code '1-2' 
+MapKeyIO(&Joystick,S2,USB[0x13],USB[0x2C]); //DRAG CHUTE usb code 'p', Weapon release usb code 'SPC'
+MapKeyIO(&Joystick,S3,L_CTL+USB[0x06],USB[0x16]); //usb code 'c' open canopy, usb code 's' (IFF/NWS)
+
+//trim
+MapKeyIO(&Joystick,H1U,R_CTL+USB[0x1A],USB[0x60]); //trim up usb code 'w', view up usb code 'num8'
+MapKeyIO(&Joystick,H1D,R_CTL+USB[0x16],USB[0x5A]); //trim down usb code 's, view down usb code 'num2' 
+MapKeyIO(&Joystick,H1L,R_CTL+USB[0x04],USB[0x5C]); //trim left usb code 'a', view left usb code 'num4'
+MapKeyIO(&Joystick,H1R,R_CTL+USB[0x07],USB[0x5E]); //trim right usb code 'd', view right usb code 'num6'
+
+//tms
+MapKeyIO(&Joystick,H2U,USB[0x54],L_CTL+USB[0x61]); //ZOOM-usb code '*', usb code 'num9' Radar up
+MapKeyIO(&Joystick,H2D,USB[0x55],L_CTL+USB[0x5B]); //ZOOM+ usb code '/', usb code 'num3' Radar Down
+MapKeyIO(&Joystick,H2L,L_ALT+USB[0x04],L_CTL+USB[0x5E]); //RESET TRIM/AP STDBY usb code 'a', usb code 'num6' Radar Center
+MapKeyIO(&Joystick,H2R,L_ALT+USB[0x1E],R_CTL+USB[0x33]); //PCA SELECT usb code '1', MAGIC SELECT usb code ';'
+
+//dms
+MapKeyIO(&Joystick,H3U,PULSE+L_ALT+USB[0x2D],USB[0x33]); //usb code '-_' special mode forward, usb code ';' TDC UP
+MapKeyIO(&Joystick,H3D,PULSE+L_ALT+L_CTL+USB[0x2D],USB[0x37]); //usb code '-_' special mode aft, usb code '.' TDC DOWN
+MapKeyIO(&Joystick,H3L,L_ALT+L_CTL+USB[0x0E],USB[0x36]); //usb code 'k' TDC CENTER, usb code ',' TDC LEFT
+MapKeyIO(&Joystick,H3R,PULSE+L_CTL+USB[0x11],USB[0x38]); // MAGIC slave/INS update usb code 'N' , usb code '/' TDC RIGHT
+
+//cms
+MapKeyIO(&Joystick,H4U,PULSE+L_ALT+USB[0x0F],PULSE+R_ALT+USB[0x0F]); //Torch on/off usb code 'L', usb code 'L' Landing Light toggle
+MapKeyIO(&Joystick,H4D,PULSE+L_ALT+L_CTL+USB[0x13],PULSE+R_CTL+USB[0x0F]); //Police light on/off usb code 'P', usb code 'L' Formation Light toggle
+MapKeyIO(&Joystick,H4L,L_ALT+L_CTL+USB[0x19],CHAIN(PULSE+L_CTL+L_SHIFT+USB[0x0F],D(),PULSE+USB[0x0F])); //VTB on/off usb code 'V', usb code 'L' 'L' Interior light on
+MapKeyIO(&Joystick,H4R,USB[0x17],CHAIN(PULSE+L_SHIFT+USB[0x0F],D(),PULSE+L_CTL+USB[0x0F])); //SMOKE on/off usb code 'T', usb code 'L' 'L' Interior light off
+MapKeyIO(&Joystick,H4P,TEMPO(USB[0x43],PULSE+USB[0x29],500),TEMPO(L_SHIFT+USB[0x10],PULSE+USB[0x48],500)); // usb code 'F10' map -LONG PRESS: Escape , mirror on/off usb code 'M' -LONG PRESS: Pause
+
+//MapKey(&Joystick,S4,0); //neutralize S4 for shiftstate if needed
+
+//////////////////////////////
+//Throttle Button Definitions/
+//////////////////////////////
+
+Eject = CHAIN(PULSE+LED(&Throttle,LED_ONOFF,LED_CURRENT^LED0),PULSE+L_CTL+USB[0x08]); //Chain needed for the ejection sequence on button "LDGH"
+
+//MIC
+MapKeyIO(&Throttle,MSU,L_CTL+L_SHIFT+USB[0x3A],L_CTL+L_ALT+USB[0x35]); //usb code 'F1' for trackirpause, usb code '`' teamspeack whisper
+MapKeyIO(&Throttle,MSD,PULSE+R_SHIFT+USB[0x0B],USB[0x35]); //nightvision on/off usb code 'h',usb code '`' teamspeack/Radio 1 Simple  Radio
+MapKeyIO(&Throttle,MSL,R_CTL+R_SHIFT+USB[0x0B],DX6); //nightvision + usb code 'h', radar range - in DCS
+MapKeyIO(&Throttle,MSR,R_ALT+R_SHIFT+USB[0x0B],DX4); //nightvision - usb code 'h', radar range + in DCS
+MapKeyIO(&Throttle,MSP,R_ALT+USB[0x35],DX2); //L_ALT+USB[0x35] Radio 2 Simple  Radio, comm menu (in DCS)
+
+
+//speedbrake
+MapKeyIO(&Throttle,SPDB,PULSE+USB[0x49],PULSE+USB[0x4C]); //usb code 'inser' CMS PANIC, usb code 'suppr' CMS PROGRAM
+MapKey(&Throttle,SPDF,CHAIN(DX7,LED(&Throttle,LED_ONOFF,LED_CURRENT+LED3))); //LED3 ON (Speedbrake 2pos in dcs)
+
+//Boat switch
+MapKeyIO(&Throttle,BSB,DX10,CHAIN(PULSE+L_ALT+L_SHIFT+USB[0x09],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT+LED4))); //RADAR azimuth WIDE in DCS, Refuel switch day usb code 'f' LED 4 ON
+MapKeyIO(&Throttle,BSF,DX9,CHAIN(PULSE+L_CTL+L_SHIFT+USB[0x09],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT+LED4))); //RADAR azimuth NARROW in DCS, Refuel switch night usb code 'f' LED 4 ON
+MapKey(&Throttle,BSM,CHAIN(PULSE+L_ALT+L_CTL+USB[0x09],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT-LED4))); //Refuel switch off usb code 'f' LED 4 OFF
+
+//China hat
+MapKeyIO(&Throttle,CHB,PULSE+L_CTL+L_SHIFT+USB[0x0D],SEQ(PULSE+L_CTL+L_ALT+USB[0x0D],PULSE+L_ALT+L_SHIFT+USB[0x0D])); //JAMMER Off usb code 'J',JAMMER ON/STDBY usb code 'J'
+MapKeyIO(&Throttle,CHF,PULSE+L_CTL+L_SHIFT+USB[0x0A],PULSE+USB[0x27]); //G-limiter toggle usb code 'G', usb code '0' (master arm toggle)
+
+//Pinkie
+MapKey(&Throttle,PSB,CHAIN(CHAIN(PULSE+L_ALT+USB[0x24],D(),PULSE+L_ALT+L_CTL+USB[0x22]),D(),LED(&Throttle,LED_ONOFF,LED_CURRENT+LED5))); //usb code '7' '5' LIGHT ON anticol, Pinky switch LED5 ON
+MapKey(&Throttle,PSF,CHAIN(CHAIN(PULSE+L_ALT+L_CTL+USB[0x24],D(),PULSE+L_ALT+L_CTL+USB[0x22]),D(),LED(&Throttle,LED_ONOFF,LED_CURRENT+LED5))); //usb code '7' '5' LIGHT ON anticol & nav,Pinky switch LED5 ON
+
+//Left ap button
+MapKeyIO(&Throttle,LTB,REXEC(0, 90, "ActKey(KEYON+Eject);"),USB[0x04]); //Ejection script and LED Blink usb code 'e', usb code 'a' AP on/off
+
+
+//Coolie
+MapKeyIO(&Throttle,CSU,TEMPO(PULSE+USB[0x3A],AXIS(MOUSE_Z_AXIS, 2, 100),500),PULSE+USB[0x2F]); //view cockpit usb code 'F1' -LONG PRESS:SCROLLWHEEL UP, Planchette  previous usb code '['
+MapKeyIO(&Throttle,CSD,TEMPO(PULSE+USB[0x3B],AXIS(MOUSE_Z_AXIS, -2, 100),500),PULSE+USB[0x30]); //view external usb code 'F2' -LONG PRESS:SCROLLWHEEL DOWN, Planchette  next usb code ']'
+MapKeyIO(&Throttle,CSL,PULSE+USB[0x3C],PULSE+L_ALT+USB[0x4A]); //view flyby usb code 'F3', Visor on/off usb code 'home'
+MapKeyIO(&Throttle,CSR,PULSE+USB[0x3D],PULSE+R_SHIFT+USB[0x0E]); //view arcade usb code 'F4',Planchette  on/off usb code 'k'
+
+//base
+MapKey(&Throttle,EFLNORM,DX16); //Fuel pump left (in DCS)
+MapKey(&Throttle,EFRNORM,DX17); //Fuel pump right (in DCS)
+MapKey(&Throttle,EOLNORM,CHAIN(PULSE+R_ALT+R_CTL+USB[0x05],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT+LED1))); //battery ON, LED animation LED1 ON usb code 'b'
+MapKey(&Throttle,EORNORM,CHAIN(PULSE+R_ALT+R_CTL+USB[0x0C],D(),PULSE+R_ALT+USB[0x13])); //usb code 'i' "vent", usb code 'p' Fuelcutoff cover close
+MapKey(&Throttle,EOLMOTOR,CHAIN(PULSE+L_CTL+L_ALT+USB[0x05],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT-LED1))); //battery OFF, LED1 OFF usb code 'b'
+MapKey(&Throttle,EORMOTOR,CHAIN(PULSE+R_ALT+USB[0x0C],D(),PULSE+R_ALT+R_CTL+USB[0x13])); //usb code 'i' "vent off", usb code 'p' Fuelcutoff cover open
+MapKey(&Throttle,EOLIGN,SEQ(PULSE+L_CTL+USB[0x1E],PULSE+L_CTL+USB[0x1F],PULSE+L_CTL+USB[0x20],PULSE+L_CTL+USB[0x21],PULSE+L_CTL+USB[0x22])); // CYCLE STORES 1-5 usb code '1-2-3-4-5'
+MapKey(&Throttle,EORIGN,CHAIN(PULSE+R_ALT+R_CTL+USB[0x0B],D(),PULSE+L_ALT+USB[0x0B],D(),PULSE+R_ALT+R_CTL+USB[0x20],D(),USB[0x2C])); // Selective Jettison Cover OPEN -> Selective Jettison ON -> FIRE (Check Master Arm ON),  usb code 'h'  usb code '3' usb code 'SPC'
+MapKeyR(&Throttle,EORIGN,CHAIN(PULSE+L_ALT+L_CTL+USB[0x0B],D(),PULSE+L_CTL+USB[0x0B])); // Selective Jettison OFF -> Selective Jettison Cover CLOSED, usb code 'h'
+MapKey(&Throttle,APUON,CHAIN(PULSE+R_ALT+R_CTL+USB[0x0E],D(),PULSE+L_CTL+L_SHIFT+USB[0x18])); //usb code 'k' starter cover open, usb code 'u' starter on
+MapKeyIO(&Throttle,LDGH,TEMPO(
+CHAIN(
+PULSE+R_CTL+USB[0x25],D(),
+PULSE+R_CTL+USB[0x24],D(),
+PULSE+R_CTL+USB[0x22],D(),
+PULSE+R_CTL+USB[0x1E],D(),
+PULSE+R_CTL+USB[0x26],D(),
+PULSE+R_CTL+USB[0x27]
+),
+CHAIN(
+PULSE+R_ALT+USB[0x06],D(),
+PULSE+R_CTL+USB[0x20],D(),
+PULSE+R_CTL+USB[0x1F],D(),
+PULSE+R_CTL+USB[0x2D],D(),
+PULSE+R_CTL+USB[0x21],D(),
+PULSE+R_SHIFT+USB[0x23],D(),
+PULSE+R_CTL+USB[0x23],D(),
+PULSE+L_CTL+L_SHIFT+USB[0x38]
+),500),
+TEMPO(
+CHAIN(
+PULSE+R_ALT+USB[0x25],D(),
+PULSE+R_ALT+USB[0x24],D(),
+PULSE+R_ALT+USB[0x22],D(),
+PULSE+R_ALT+USB[0x1E],D(),
+PULSE+R_ALT+USB[0x26],D(),
+PULSE+R_ALT+USB[0x27]
+),
+CHAIN(
+PULSE+R_CTL+USB[0x06],D(),
+PULSE+R_ALT+USB[0x20],D(),
+PULSE+R_ALT+USB[0x1F],D(),
+PULSE+R_ALT+USB[0x2D],D(),
+PULSE+R_ALT+USB[0x21],D(),
+PULSE+R_ALT+USB[0x23],D(),
+PULSE+R_ALT+R_SHIFT+USB[0x23],D(),
+PULSE+L_ALT+L_CTL+USB[0x38]
+),500)
+); //AUDIO WARNING/RWR/JAMMER/D2M OFF DECOY MANUAL/DECOY PROG1 usb code '8,7,5,1,9,0' -LONG PRESS: CM BOX/HYD PUMP/HUD/RDR SCREEN/INS/PITOT/PITOTCOVER/RADIO OFF usb code 'c,3,2,-,4,6,6,/'
+//AUDIO WARNING/RWR/JAMMER/D2M ON DECOY SEMI AUTO usb code '8,7,5,1,9,0' -LONG PRESS: CM BOX/HYD PUMP/HUD/RDR SCREEN/INS/PITOT/PITOTCOVER/RADIO ON usb code 'c,3,2,-,4,6,6,/'
+MapKey(&Throttle,FLAPU,CHAIN(DX22,LED(&Throttle,LED_ONOFF,LED_CURRENT-LED2))); //LED2 OFF (gear up 2pos in dcs)
+MapKey(&Throttle,FLAPD,CHAIN(DX23,LED(&Throttle,LED_ONOFF,LED_CURRENT-LED2))); //LED2 OFF (park brake on 2pos in dcs)
+MapKey(&Throttle,EACON,DX24); //Radar on/STDBY (in DCS)
+MapKey(&Throttle,RDRNRM,DX25); //Radar Altimeter on/off (in DCS)
+MapKeyIO(&Throttle,APENG,L_CTL+USB[0x15],TEMPO(USB[0x04],R_ALT+USB[0x1D],500)); //usb code 'r' master warning, usb code 'a' AP on/off -LONG PRESS: WARNING LIGHT TEST usb code 'z'
+MapKey(&Throttle,APPAT,DX27); // AP modes (in DCS)
+MapKey(&Throttle,APALT,DX28); // AP modes (in DCS)
+MapKey(&Throttle,IDLELON,CHAIN(PULSE+R_SHIFT+USB[0x4D],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT-LED0))); //Idle->off BACKLIGHT OFF STOP ENGINE, usb code 'end'
+MapKey(&Throttle,IDLERON,CHAIN(PULSE+R_SHIFT+USB[0x4D],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT-LED0))); //Idle->off BACKLIGHT OFF STOP ENGINE, usb code 'end'
+MapKey(&Throttle,IDLEROFF,CHAIN(LED(&Throttle,LED_ONOFF,LED_CURRENT+LED0),D(),PULSE+R_SHIFT+USB[0x4A])); //off->Idle BACKLIGHT ON START ENGINE, usb code 'home'
+MapKey(&Throttle,IDLELOFF,CHAIN(LED(&Throttle,LED_ONOFF,LED_CURRENT+LED0),D(),PULSE+R_SHIFT+USB[0x4A])); //off->Idle BACKLIGHT ON START ENGINE, usb code 'home'
+
+
+//Additionnal "Off" states
+MapKey(&Throttle,APUOFF,CHAIN(PULSE+R_ALT+USB[0x0E],D(),PULSE+L_ALT+L_CTL+USB[0x18]));  //usb code 'k' starter cover close, usb code 'u' starter off
+MapKey(&Throttle,SPDM,LED(&Throttle,LED_ONOFF,LED_CURRENT-LED3)); // Speedbrake middle LED3 OFF
+MapKey(&Throttle,PSM,CHAIN(PULSE+L_ALT+USB[0x24],D(),PULSE+L_ALT+USB[0x22],D(),LED(&Throttle,LED_ONOFF,LED_CURRENT-LED5))); //usb code '7' '5' LIGHT OFF anticol & nav,  Pinky switch middle LED5 OFF
+MapKey(&Throttle,FLAPM,LED(&Throttle,LED_ONOFF,LED_CURRENT+LED2)); //LED2 ON (park brake off, gear down 2pos in dcs)
+
+} 
+ 
+int EventHandle(int type, alias o, int x) 
+{ 
+DefaultMapping(&o, x); 
+}
